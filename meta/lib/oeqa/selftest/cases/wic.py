@@ -57,11 +57,23 @@ class WicTestCase(OESelftestTestCase):
 
     image_is_ready = False
     wicenv_cache = {}
+    oldpath = ""
+    pathPlusTools = ""
+    envfile = ""
 
     def setUpLocal(self):
         """This code is executed before each test method."""
         self.resultdir = os.path.join(self.builddir, "wic-tmp")
         super(WicTestCase, self).setUpLocal()
+
+        wic_tools_depends = get_bb_var("DEPENDS", "wic-tools")
+        config = 'DEPENDS:pn-core-image-minimal += " %s"' % wic_tools_depends
+        self.append_config(config)
+        bitbake('wic-tools core-image-minimal core-image-minimal-mtdutils')
+        WicTestCase.envfile = self._get_image_env_path('core-image-minimal') + "/core-image-minimal.env"
+        WicTestCase.oldpath = os.environ['PATH']
+        WicTestCase.pathPlusTools = get_bb_var("PATH", "wic-tools") + ":" + os.environ['PATH']
+        os.environ['PATH'] = WicTestCase.pathPlusTools
 
         # Do this here instead of in setUpClass as the base setUp does some
         # clean up which can result in the native tools built earlier in
@@ -78,6 +90,7 @@ class WicTestCase(OESelftestTestCase):
         """Remove resultdir as it may contain images."""
         rmtree(self.resultdir, ignore_errors=True)
         super(WicTestCase, self).tearDownLocal()
+        os.environ['PATH'] = WicTestCase.oldpath
 
     def _get_image_env_path(self, image):
         """Generate and obtain the path to <image>.env"""
