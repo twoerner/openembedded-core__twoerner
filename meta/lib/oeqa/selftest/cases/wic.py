@@ -1131,6 +1131,7 @@ run_wic_cmd() {
                  'MACHINE_FEATURES:append = " efi"\n'
         self.append_config(config)
         image_recipe_append = """
+DEPENDS:append = " wic-native"
 do_image_wic[postfuncs] += "run_wic_cmd"
 run_wic_cmd() {
     echo "test" >> ${WORKDIR}/test.wic-cp
@@ -1147,7 +1148,7 @@ run_wic_cmd() {
         bb_vars = get_bb_vars(['DEPLOY_DIR_IMAGE', 'IMAGE_LINK_NAME'], "wic-image-minimal")
         image_path = os.path.join(bb_vars['DEPLOY_DIR_IMAGE'], bb_vars['IMAGE_LINK_NAME'])
         # check if file is there
-        result = runCmd("wic ls %s:1/ -n %s" % (image_path+".wic", sysroot))
+        result = runCmd("wic ls %s:1/ -n %s --vars %s" % (image_path+".wic", sysroot, self.envfile))
         self.assertIn("test.wic-cp", result.output)
         self.remove_config(config)
 
@@ -1816,12 +1817,12 @@ INITRAMFS_IMAGE = "core-image-initramfs-boot"
                 new_image_path = sparse.name
 
             sysroot = get_bb_var('RECIPE_SYSROOT_NATIVE', 'wic-tools')
-            cmd = "wic write -n %s --expand 1:0 %s %s" % (sysroot, image_path, new_image_path)
+            cmd = "wic write -n %s --expand 1:0 %s %s --vars %s" % (sysroot, image_path, new_image_path, self.envfile)
             runCmd(cmd)
 
             # check if partitions are expanded
-            orig = runCmd("wic ls %s -n %s" % (image_path, sysroot))
-            exp = runCmd("wic ls %s -n %s" % (new_image_path, sysroot))
+            orig = runCmd("wic ls %s -n %s --vars %s" % (image_path, sysroot, self.envfile))
+            exp = runCmd("wic ls %s -n %s --vars %s" % (new_image_path, sysroot, self.envfile))
             orig_sizes = [int(line.split()[3]) for line in orig.output.split('\n')[1:]]
             exp_sizes = [int(line.split()[3]) for line in exp.output.split('\n')[1:]]
             self.assertEqual(orig_sizes[0], exp_sizes[0]) # first partition is not resized
